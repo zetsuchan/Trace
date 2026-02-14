@@ -1,0 +1,269 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─────────────────────────────────────────────
+ * TRACE — Design Tokens
+ * Warm dark palette for sickle cell intelligence
+ * ───────────────────────────────────────────── */
+
+@theme {
+  /* Dark mode (default) */
+  --color-bg-deep: #0F0E0D;
+  --color-bg-surface: #1A1816;
+  --color-bg-elevated: #242120;
+
+  --color-text-primary: #F5F0EB;
+  --color-text-secondary: #9B938A;
+  --color-text-tertiary: #5C554E;
+
+  /* Chain node colors */
+  --color-chain-symptom: #E8A87C;
+  --color-chain-mechanism: #D4786A;
+  --color-chain-root: #C0A0E8;
+  --color-chain-connection: #4A4540;
+  --color-chain-active: #F0C87A;
+
+  /* Accents */
+  --color-accent-action: #7CB89E;
+  --color-accent-warning: #D4786A;
+  --color-accent-safe: #7CB89E;
+}
+
+/* ─────────────────────────────────────────────
+ * Light Mode Theme
+ * ───────────────────────────────────────────── */
+
+[data-theme="light"] {
+  --color-bg-deep: #FAF8F6;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-elevated: #F5F3F1;
+
+  --color-text-primary: #1A1816;
+  --color-text-secondary: #5C554E;
+  --color-text-tertiary: #9B938A;
+
+  --color-chain-symptom: #D4854A;
+  --color-chain-mechanism: #B8503D;
+  --color-chain-root: #9A6BC9;
+  --color-chain-connection: #C4BCB5;
+  --color-chain-active: #D6A53F;
+
+  --color-accent-action: #5A9B7F;
+  --color-accent-warning: #B8503D;
+  --color-accent-safe: #5A9B7F;
+}
+
+/* ─────────────────────────────────────────────
+ * Depth & Shadow System
+ * ───────────────────────────────────────────── */
+
+:root {
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.4), 0 8px 32px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.5), 0 16px 64px rgba(0, 0, 0, 0.3);
+  --radius: 0.625rem;
+
+  /* Map shadcn variables to our warm dark palette */
+  --background: #0F0E0D;
+  --foreground: #F5F0EB;
+  --card: #1A1816;
+  --card-foreground: #F5F0EB;
+  --popover: #1A1816;
+  --popover-foreground: #F5F0EB;
+  --primary: #F0C87A;
+  --primary-foreground: #0F0E0D;
+  --secondary: #242120;
+  --secondary-foreground: #F5F0EB;
+  --muted: #242120;
+  --muted-foreground: #9B938A;
+  --accent: #7CB89E;
+  --accent-foreground: #0F0E0D;
+  --destructive: #D4786A;
+  --border: #4A4540;
+  --input: #4A4540;
+  --ring: #F0C87A;
+  --chart-1: #E8A87C;
+  --chart-2: #7CB89E;
+  --chart-3: #C0A0E8;
+  --chart-4: #F0C87A;
+  --chart-5: #D4786A;
+  --sidebar: #1A1816;
+  --sidebar-foreground: #F5F0EB;
+  --sidebar-primary: #F0C87A;
+  --sidebar-primary-foreground: #0F0E0D;
+  --sidebar-accent: #242120;
+  --sidebar-accent-foreground: #F5F0EB;
+  --sidebar-border: #4A4540;
+  --sidebar-ring: #F0C87A;
+}
+
+[data-theme="light"] {
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1), 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12), 0 8px 32px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.15), 0 16px 64px rgba(0, 0, 0, 0.1);
+}
+
+/* ─────────────────────────────────────────────
+ * Base styles
+ * ───────────────────────────────────────────── */
+
+body {
+  background-color: var(--color-bg-deep);
+  color: var(--color-text-primary);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings with paired line-heights */
+h1, h2, h3 {
+  font-family: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
+  text-wrap: balance;
+  line-height: 1.2;
+}
+
+h1 {
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  line-height: 1.2;
+}
+
+p {
+  max-width: 65ch;
+}
+
+/* Tabular numbers for any dynamic values */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─────────────────────────────────────────────
+ * Marquee animation
+ * ───────────────────────────────────────────── */
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ─────────────────────────────────────────────
+ * Accessibility: Reduced motion
+ * ───────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─────────────────────────────────────────────
+ * Touch device optimizations
+ * ───────────────────────────────────────────── */
+
+button, a, input, textarea {
+  touch-action: manipulation;
+}
+
+/* Hairline borders on retina */
+:root {
+  --border-hairline: 1px;
+}
+
+@media only screen and (min-device-pixel-ratio: 2),
+  only screen and (min-resolution: 192dpi) {
+  :root {
+    --border-hairline: 0.5px;
+  }
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* .dark class inherits the same dark palette (dark is default) */
+.dark {
+  --background: #0F0E0D;
+  --foreground: #F5F0EB;
+  --card: #1A1816;
+  --card-foreground: #F5F0EB;
+  --popover: #1A1816;
+  --popover-foreground: #F5F0EB;
+  --primary: #F0C87A;
+  --primary-foreground: #0F0E0D;
+  --secondary: #242120;
+  --secondary-foreground: #F5F0EB;
+  --muted: #242120;
+  --muted-foreground: #9B938A;
+  --accent: #7CB89E;
+  --accent-foreground: #0F0E0D;
+  --destructive: #D4786A;
+  --border: #4A4540;
+  --input: #4A4540;
+  --ring: #F0C87A;
+  --sidebar: #1A1816;
+  --sidebar-foreground: #F5F0EB;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+}
