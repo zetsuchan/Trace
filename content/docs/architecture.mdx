@@ -1,0 +1,302 @@
+---
+title: Architecture
+description: Multi-agent pipeline, MCP integrations, and data flow
+---
+
+# Architecture
+
+TRACE is a multi-agent system where three specialized Claude agents work in sequence, each with distinct models, tools, and responsibilities. The orchestrator coordinates the pipeline and streams results to the client via Server-Sent Events.
+
+## System Overview
+
+```
+User Input (natural language)
+        |
+        v
++------------------+     +------------------+     +---------------------+
+| Symptom Analyzer |---->| Causal Chain     |---->| Recommendation      |
+| (Sonnet 4.5)     |     | Builder          |     | Agent               |
+|                  |     | (Opus 4.6)       |     | (Sonnet 4.5)        |
+| Parse symptoms,  |     | Extended thinking|     | Urgency triage,     |
+| body systems,    |     | + tool use loop  |     | patient vs doctor   |
+| severity, timing |     | Exa + FireCrawl  |     | suggestions         |
++------------------+     +------------------+     +---------------------+
+                                |                           |
+                                v                           v
+                    +---------------------+     +---------------------+
+                    | Obsidian MCP        |     | PostgreSQL          |
+                    | Save trace note     |     | Save trace, chains, |
+                    | as markdown         |     | suggestions         |
+                    +---------------------+     +---------------------+
+```
+
+## Agent Pipeline
+
+### Agent 1: Symptom Analyzer
+
+**Model:** Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`)
+**Max tokens:** 2,000
+**Tools:** None (pure parsing)
+
+The Symptom Analyzer takes raw patient input and produces structured data. It understands SCD-specific language conventions:
+
+- "Crisis" or "episode" maps to severe vaso-occlusive pain
+- "Tired" / "fatigue" in SCD context flags anemia exacerbation
+- Shortness of breath triggers acute chest syndrome evaluation
+- Fever + SCD elevates infection risk to moderate minimum severity
+- Priapism, stroke symptoms, sudden vision changes are always flagged severe
+
+**Input:** Free-text string from the patient
+**Output:**
+```json
+{
+  "symptoms": [
+    {
+      "id": "s1",
+      "text": "legs have been aching since yesterday",
+      "bodySystem": "musculoskeletal",
+      "severity": "moderate",
+      "temporalMarker": "since yesterday",
+      "isNewOnset": true
+    }
+  ],
+  "environmentalFactors": ["cold weather"],
+  "temporalPattern": "acute",
+  "rawInput": "..."
+}
+```
+
+Body systems recognized: respiratory, circulatory, musculoskeletal, neurological, renal, immune, gastrointestinal, integumentary, endocrine.
+
+### Agent 2: Causal Chain Builder
+
+**Model:** Claude Opus 4.6 (`claude-opus-4-6`)
+**Max tokens:** 16,000
+**Extended thinking:** Enabled (4,000 token budget)
+**Tools:** `search_medical_research` (Exa), `scrape_article` (FireCrawl)
+
+This is the core reasoning agent. It receives structured symptom data and builds 2-4 causal chains, each tracing a pathway from reported symptom through biological mechanisms to a root cause.
+
+**Extended thinking** allows the model to reason deeply about cross-system pathophysiology before producing output. The thinking content is streamed to the client and displayed as a "reasoning trace."
+
+**Tool use loop:** The agent can call tools mid-reasoning to ground its hypotheses in medical literature. The orchestrator runs a standard Anthropic tool-use loop:
+
+```
+1. Send symptoms to Opus with tools available
+2. If stop_reason === "tool_use":
+   a. Execute tool calls (Exa search or FireCrawl scrape)
+   b. Send tool results back as user message
+   c. Continue until stop_reason === "end_turn"
+3. Parse final JSON response
+```
+
+**SCD pathophysiology knowledge** baked into the system prompt:
+- HbS polymerization triggers (dehydration, hypoxia, acidosis, cold, stress)
+- Vaso-occlusion cascade (polymerization, sickling, adhesion, occlusion, ischemia, pain)
+- Hemolytic anemia (chronic RBC destruction, low Hb, fatigue)
+- Endothelial dysfunction (free hemoglobin scavenges NO, vasoconstriction)
+- Splenic dysfunction (autosplenectomy, infection vulnerability)
+- Chronic organ damage patterns (kidneys, liver, bones, lungs, brain)
+- Inflammatory state markers (WBC, IL-6, TNF-alpha, CRP)
+
+**Cross-system chains** the agent is prompted to consider:
+- Respiratory to Circulatory: hypoxia triggers sickling
+- Musculoskeletal to Neurological: bone marrow infarction can cause fat embolism
+- Immune to All Systems: infection triggers fever, dehydration, sickling cascade
+- Endocrine to Circulatory: stress hormones cause vasoconstriction
+- Renal to Circulatory: hyposthenuria causes dehydration and increased viscosity
+- Sleep to Immune to Circulatory: poor sleep elevates inflammation
+
+**Output:**
+```json
+{
+  "chains": [
+    {
+      "id": "chain-1",
+      "label": "Cold-Induced Vaso-Occlusive Cascade",
+      "overallConfidence": 0.85,
+      "nodes": [
+        {
+          "id": "node-1",
+          "type": "symptom",
+          "title": "Bilateral Leg Pain",
+          "description": "...",
+          "bodySystem": "musculoskeletal",
+          "confidence": 0.95
+        },
+        {
+          "id": "node-2",
+          "type": "mechanism",
+          "title": "Peripheral Vasoconstriction",
+          "description": "...",
+          "bodySystem": "circulatory",
+          "confidence": 0.85
+        },
+        {
+          "id": "node-3",
+          "type": "root-cause",
+          "title": "Cold Exposure Triggering HbS Polymerization",
+          "description": "...",
+          "bodySystem": "circulatory",
+          "confidence": 0.80
+        }
+      ],
+      "connections": [
+        {
+          "fromNodeId": "node-2",
+          "toNodeId": "node-1",
+          "mechanism": "Vasoconstriction traps sickled RBCs...",
+          "strength": "strong"
+        }
+      ]
+    }
+  ],
+  "summary": "Plain-language summary of findings"
+}
+```
+
+### Agent 3: Recommendation Agent
+
+**Model:** Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`)
+**Max tokens:** 2,000
+**Tools:** None
+
+Takes the causal chains and summary and generates 3-6 actionable suggestions. Each suggestion is classified by:
+
+- **Urgency:** `urgent` (go to ER), `discuss` (bring up at next visit), `info` (self-management)
+- **Audience:** `forDoctor: true` (for the care team) or `forDoctor: false` (for the patient)
+
+Urgent triggers include: acute chest syndrome signs, stroke symptoms, splenic sequestration, priapism > 2 hours, high fever in asplenic patients, severe dehydration, uncontrolled pain.
+
+The agent never provides direct medical advice — everything is framed as "consider discussing with your hematologist" or "ask your doctor about."
+
+### Quick Trace Mode
+
+For faster results, TRACE offers a single-agent quick mode using Sonnet 4.5 that combines all three stages into one call. It produces a single causal chain with 3-5 nodes and 2-4 suggestions. No tool use, no extended thinking — just rapid structured output. Useful for quick checks or when the full pipeline's latency is not desired.
+
+## MCP Integrations
+
+### Exa Search API
+
+**Purpose:** Ground causal reasoning in medical literature
+**Used by:** Causal Chain Builder (Agent 2)
+**Tool name:** `search_medical_research`
+
+Searches for SCD-related research papers, clinical guidelines, and pathophysiology references. Returns up to 5 results with title, URL, and text content (up to 3,000 characters each). The agent uses these to validate or refine its causal hypotheses.
+
+### FireCrawl Scraping
+
+**Purpose:** Extract full content from medical articles
+**Used by:** Causal Chain Builder (Agent 2)
+**Tool name:** `scrape_article`
+
+When the agent finds a particularly relevant article via Exa, it can scrape the full content as markdown. Content is trimmed to 4,000 characters to keep context manageable. Used to read detailed mechanism descriptions or clinical study results.
+
+### Obsidian Local REST API
+
+**Purpose:** Persist trace results as structured markdown notes
+**Used by:** Orchestrator (post-pipeline)
+
+After the pipeline completes, the orchestrator saves the full trace as a markdown note in the user's Obsidian vault under `TRACE Patient Notes/`. Each note includes:
+- Symptom summary and date
+- Extended thinking content
+- All causal chains with confidence scores
+- Plain-language summary
+- Suggestions with urgency badges
+
+Also supports searching existing notes and reading note content for historical context.
+
+## Data Flow
+
+```
+Patient types: "My legs hurt and I'm exhausted, it's been cold"
+                                    |
+                                    v
+                           POST /api/trace
+                          { inputText, mode }
+                                    |
+                                    v
+                    +----- SSE Stream Opens -----+
+                    |                            |
+                    v                            |
+            [status: "symptoms"]                 |
+            Symptom Analyzer parses              |
+            [symptoms event streamed]            |
+                    |                            |
+                    v                            |
+            [status: "chains"]                   |
+            Causal Chain Builder reasons         |
+            [thinking event streamed]            |
+            [chain events streamed, 1 per chain] |
+            [summary event streamed]             |
+                    |                            |
+                    v                            |
+            [status: "recommendations"]          |
+            Recommendation Agent generates       |
+            [suggestions event streamed]         |
+                    |                            |
+                    v                            |
+            [status: "saving"]                   |
+            Save to Obsidian (markdown)          |
+            Save to PostgreSQL (structured)      |
+                    |                            |
+                    v                            |
+            [done event]                         |
+                    +------- Stream Closes ------+
+```
+
+## Database Schema
+
+TRACE uses PostgreSQL with Drizzle ORM. The schema contains 10 tables across three domains:
+
+### Identity and Profile
+
+| Table | Purpose |
+|---|---|
+| `users` | Authentication records (id, email, name) |
+| `patient_profiles` | SCD-specific profile (genotype, HbF level, baseline SpO2) |
+| `patients` | Legacy patient records with triggers, medications, specialists |
+
+### Trace Data
+
+| Table | Purpose |
+|---|---|
+| `traces` | Core trace records — input text, thinking, chains (JSONB), summary, suggestions, weather data |
+| `trace_chains` | Normalized chain nodes — type (symptom/mechanism/root-cause), title, description, confidence, position |
+| `suggestions` | Normalized suggestions — text, urgency level, forDoctor flag |
+| `visit_cards` | Structured content for doctor visit preparation |
+
+### Health Data
+
+| Table | Purpose |
+|---|---|
+| `health_records` | Raw Apple Health imports — heart rate, HRV, resting HR, sleep, VO2 max, step count, active energy, six-minute walk distance |
+| `daily_baselines` | Aggregated daily metrics — avg/min/max heart rate, resting HR, HRV SDNN, sleep duration, steps, active energy, VO2 max, computed risk score |
+| `personal_baselines` | Statistical baselines per metric — average, standard deviation, normal range bounds, computed from N days of data |
+
+### Health Data Pipeline
+
+TRACE imports Apple Health XML exports and processes them into a three-tier data structure:
+
+1. **Raw records** (`health_records`): Every individual health measurement
+2. **Daily aggregations** (`daily_baselines`): Per-day statistical summaries with risk scoring
+3. **Personal baselines** (`personal_baselines`): Long-term statistical norms (mean, standard deviation, normal range) computed across all available data
+
+The `/api/health` endpoint serves the last 30 days of daily data plus personal baselines. If the database is unavailable, it falls back to mock data derived from real baseline calculations.
+
+## SSE Streaming Protocol
+
+The `/api/trace` endpoint uses Server-Sent Events to stream results progressively:
+
+| Event | Data | When |
+|---|---|---|
+| `status` | `{ stage, message, mcps? }` | Each pipeline stage starts |
+| `symptoms` | `{ symptoms, environmentalFactors, temporalPattern }` | After Agent 1 completes |
+| `thinking` | `{ content }` | After Agent 2's extended thinking |
+| `chain` | `{ chain }` | For each causal chain (streamed individually) |
+| `summary` | `{ content }` | After all chains are built |
+| `suggestions` | `{ suggestions }` | After Agent 3 completes |
+| `done` | `{ success: true }` | Pipeline complete |
+| `error` | `{ message }` | On failure |
+
+The client connects with `EventSource` or `fetch` and processes events as they arrive, enabling progressive UI rendering — the user sees symptoms parsed before chains are built, and chains appear one at a time.

@@ -1,0 +1,392 @@
+---
+title: API Reference
+description: TRACE API endpoints
+---
+
+# API Reference
+
+TRACE exposes two API endpoints — a streaming trace endpoint and a health data endpoint.
+
+## POST /api/trace
+
+The primary endpoint. Accepts a patient's symptom description and streams back causal analysis results via Server-Sent Events (SSE).
+
+### Request
+
+```json
+{
+  "inputText": "My legs have been aching since yesterday and I'm really tired. It's been cold outside.",
+  "mode": "deep"
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `inputText` | `string` | Yes | Free-text symptom description from the patient |
+| `mode` | `"deep" \| "quick"` | No | `"deep"` runs the full 3-agent pipeline (default). `"quick"` runs a single-agent fast mode. |
+
+### Response
+
+Returns a `text/event-stream` response with the following headers:
+
+```
+Content-Type: text/event-stream
+Cache-Control: no-cache
+Connection: keep-alive
+```
+
+### SSE Events
+
+Events are streamed in the following order:
+
+#### `status`
+
+Sent at the start of each pipeline stage.
+
+```
+event: status
+data: {"stage":"symptoms","message":"Parsing symptoms..."}
+```
+
+```
+event: status
+data: {"stage":"chains","message":"Tracing causal connections across body systems..."}
+```
+
+```
+event: status
+data: {"stage":"recommendations","message":"Generating actionable suggestions..."}
+```
+
+```
+event: status
+data: {"stage":"saving","message":"Saving to Obsidian...","mcps":["obsidian"]}
+```
+
+```
+event: status
+data: {"stage":"saving","message":"Saving to database...","mcps":["postgres"]}
+```
+
+```
+event: status
+data: {"stage":"complete","message":"Trace complete"}
+```
+
+#### `symptoms`
+
+Sent after the Symptom Analyzer completes.
+
+```
+event: symptoms
+data: {
+  "symptoms": [
+    {
+      "id": "s1",
+      "text": "legs have been aching since yesterday",
+      "bodySystem": "musculoskeletal",
+      "severity": "moderate",
+      "temporalMarker": "since yesterday",
+      "isNewOnset": true
+    },
+    {
+      "id": "s2",
+      "text": "really tired",
+      "bodySystem": "circulatory",
+      "severity": "moderate",
+      "temporalMarker": null,
+      "isNewOnset": false
+    }
+  ],
+  "environmentalFactors": ["cold weather"],
+  "temporalPattern": "acute"
+}
+```
+
+#### `thinking`
+
+Extended thinking content from Claude Opus (deep mode only).
+
+```
+event: thinking
+data: {"content":"Let me analyze the relationship between cold exposure and these symptoms in the context of sickle cell disease..."}
+```
+
+#### `chain`
+
+Sent once per causal chain (typically 2-4 chains in deep mode, 1 in quick mode).
+
+```
+event: chain
+data: {
+  "chain": {
+    "id": "chain-1",
+    "label": "Cold-Induced Vaso-Occlusive Cascade",
+    "overallConfidence": 0.85,
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "symptom",
+        "title": "Bilateral Leg Pain",
+        "description": "Aching pain in both legs, moderate severity, onset yesterday",
+        "bodySystem": "musculoskeletal",
+        "confidence": 0.95
+      },
+      {
+        "id": "node-2",
+        "type": "mechanism",
+        "title": "Microvascular Occlusion",
+        "description": "Sickled red blood cells adhere to vascular endothelium, blocking small vessels in the legs",
+        "bodySystem": "circulatory",
+        "confidence": 0.85
+      },
+      {
+        "id": "node-3",
+        "type": "root-cause",
+        "title": "Cold-Triggered HbS Polymerization",
+        "description": "Cold ambient temperature causes peripheral vasoconstriction, reducing oxygen delivery and promoting HbS polymerization",
+        "bodySystem": "circulatory",
+        "confidence": 0.80
+      }
+    ],
+    "connections": [
+      {
+        "fromNodeId": "node-2",
+        "toNodeId": "node-1",
+        "mechanism": "Vascular occlusion causes tissue ischemia, activating nociceptors and producing pain",
+        "strength": "strong"
+      },
+      {
+        "fromNodeId": "node-3",
+        "toNodeId": "node-2",
+        "mechanism": "Polymerized HbS distorts RBC shape, increasing adhesion to endothelium",
+        "strength": "strong"
+      }
+    ]
+  }
+}
+```
+
+#### `summary`
+
+Plain-language summary of all findings.
+
+```
+event: summary
+data: {"content":"Your leg pain and fatigue likely share a common root cause: cold weather triggering HbS polymerization. The cold causes your blood vessels to constrict, which reduces oxygen flow and promotes sickling. This creates a cascade of vaso-occlusion in your legs (causing pain) and accelerated hemolysis (causing fatigue from worsened anemia)."}
+```
+
+#### `suggestions`
+
+Actionable recommendations with urgency classification.
+
+```
+event: suggestions
+data: {
+  "suggestions": [
+    {
+      "text": "Consider discussing prophylactic pain management strategies for cold weather with your hematologist",
+      "forDoctor": true,
+      "urgency": "discuss"
+    },
+    {
+      "text": "Stay warm and layer clothing when going outside — cold exposure is a known trigger for vaso-occlusive episodes in SCD",
+      "forDoctor": false,
+      "urgency": "info"
+    },
+    {
+      "text": "If leg pain worsens or does not respond to your home pain management plan within 24 hours, contact your care team or visit the ER",
+      "forDoctor": false,
+      "urgency": "urgent"
+    }
+  ]
+}
+```
+
+#### `done`
+
+Pipeline completed successfully.
+
+```
+event: done
+data: {"success":true}
+```
+
+#### `error`
+
+Pipeline encountered an error.
+
+```
+event: error
+data: {"message":"Failed to parse symptom analysis response"}
+```
+
+### Deep vs Quick Mode
+
+| Aspect | Deep Mode | Quick Mode |
+|---|---|---|
+| Agents | 3 (Analyzer, Chain Builder, Recommender) | 1 (combined) |
+| Models | Sonnet 4.5 + Opus 4.6 + Sonnet 4.5 | Sonnet 4.5 only |
+| Extended thinking | Yes (4K token budget) | No |
+| Tool use | Yes (Exa search, FireCrawl scrape) | No |
+| Chains produced | 2-4 | 1 |
+| Suggestions | 3-6 | 2-4 |
+| Persistence | Obsidian + PostgreSQL | None |
+| Latency | 15-45 seconds | 3-8 seconds |
+
+### Error Handling
+
+If any stage fails, an `error` event is sent and the stream closes. The client should handle:
+- Network disconnection (reconnect or show error)
+- JSON parse failures in event data
+- Missing expected events (partial pipeline completion)
+
+### Client Example
+
+```typescript
+const response = await fetch('/api/trace', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    inputText: 'My legs hurt and I feel dizzy',
+    mode: 'deep'
+  })
+});
+
+const reader = response.body!.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+
+  const text = decoder.decode(value);
+  const lines = text.split('\n');
+
+  for (const line of lines) {
+    if (line.startsWith('event: ')) {
+      const eventType = line.slice(7);
+      // next line is "data: ..."
+    }
+    if (line.startsWith('data: ')) {
+      const data = JSON.parse(line.slice(6));
+      // handle event data
+    }
+  }
+}
+```
+
+---
+
+## GET /api/health
+
+Returns the patient's health data baselines and recent daily metrics from the Apple Health import pipeline.
+
+### Request
+
+No parameters required. Simple GET request.
+
+```
+GET /api/health
+```
+
+### Response
+
+```json
+{
+  "personalBaselines": [
+    {
+      "metric": "heart_rate",
+      "avgValue": 75,
+      "stdDev": 8,
+      "minNormal": 67,
+      "maxNormal": 83
+    },
+    {
+      "metric": "hrv",
+      "avgValue": 58,
+      "stdDev": 18,
+      "minNormal": 40,
+      "maxNormal": 76
+    },
+    {
+      "metric": "resting_heart_rate",
+      "avgValue": 67,
+      "stdDev": 5,
+      "minNormal": 62,
+      "maxNormal": 72
+    },
+    {
+      "metric": "sleep",
+      "avgValue": 7.1,
+      "stdDev": 1.2,
+      "minNormal": 5.9,
+      "maxNormal": 8.3
+    },
+    {
+      "metric": "step_count",
+      "avgValue": 7800,
+      "stdDev": 2500,
+      "minNormal": 5300,
+      "maxNormal": 10300
+    },
+    {
+      "metric": "vo2_max",
+      "avgValue": 35,
+      "stdDev": 3,
+      "minNormal": 32,
+      "maxNormal": 38
+    }
+  ],
+  "dailyData": [
+    {
+      "date": "2025-05-01",
+      "avgHeartRate": 78,
+      "minHeartRate": 52,
+      "maxHeartRate": 145,
+      "restingHeartRate": 65,
+      "hrvSdnn": 48,
+      "sleepDurationHours": 6.8,
+      "stepCount": 8200,
+      "activeEnergy": 420,
+      "vo2Max": 35,
+      "riskScore": 0.3
+    }
+  ],
+  "summary": {
+    "totalRecords": 145000,
+    "dateRange": {
+      "start": "2019-05-17",
+      "end": "2025-05-28"
+    },
+    "totalDays": 2082
+  }
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `personalBaselines` | `array` | Statistical baselines per metric — mean, standard deviation, normal range |
+| `dailyData` | `array` | Last 30 days of aggregated daily health metrics, in chronological order |
+| `summary.totalRecords` | `number` | Total health records imported from Apple Health |
+| `summary.dateRange` | `object` | Date range covered by the daily data |
+| `summary.totalDays` | `number` | Number of days with recorded data |
+
+### Metrics Available
+
+| Metric | Unit | Source |
+|---|---|---|
+| `heart_rate` | bpm | Apple Watch |
+| `hrv` (HRV SDNN) | ms | Apple Watch |
+| `resting_heart_rate` | bpm | Apple Watch |
+| `sleep` | hours | Apple Watch / iPhone |
+| `step_count` | steps | Apple Watch / iPhone |
+| `vo2_max` | mL/kg/min | Apple Watch |
+| `active_energy` | kcal | Apple Watch |
+| `six_min_walk` | meters | Apple Watch |
+
+### Fallback Behavior
+
+If the database connection fails, the endpoint returns mock baseline data derived from real statistical calculations. This ensures the UI always has baseline context for comparison, even in offline or development scenarios.

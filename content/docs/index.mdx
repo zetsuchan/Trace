@@ -1,0 +1,64 @@
+---
+title: Overview
+description: What is TRACE and why it exists
+---
+
+# TRACE — Sickle Cell Causal Intelligence
+
+**TRACE** stands for **T**racing **R**oot-cause **A**nalysis through **C**ausal **E**xploration. It is a multi-agent AI system that helps sickle cell patients understand *why* they feel what they feel — not just *what* they feel.
+
+## The Problem
+
+Sickle cell disease (SCD) affects every organ system in the body. A patient experiencing leg pain, fatigue, and shortness of breath might be dealing with three separate issues — or they might all stem from a single root cause cascading across body systems. Traditional symptom trackers record *what* hurts. TRACE explains *why*.
+
+Patients often arrive at appointments with a list of symptoms but no framework for connecting them. Doctors have limited visit time to piece together cross-system relationships. The gap between "I feel terrible" and "here's what's happening biologically" is where patients lose agency over their own care.
+
+## The Personal Story
+
+TRACE was built by someone who lives with sickle cell disease. Years of tracking symptoms in notebooks, Apple Health exports, and Obsidian vaults revealed a pattern: the same triggers kept producing the same cascades, but it took months of lived experience to recognize them. What if an AI could surface those connections in seconds instead of months?
+
+The real Apple Health data powering TRACE's baseline calculations — 2,000+ days of heart rate, HRV, sleep, SpO2, and step count data — comes from the builder's own health records. This is not a hypothetical product. It is a tool built out of necessity.
+
+## What TRACE Does
+
+When a patient describes how they feel in natural language, TRACE runs a three-stage agent pipeline:
+
+1. **Symptom Analysis** — Parses free-text input into structured symptom data, identifying body systems, severity, temporal patterns, and environmental factors. Understands SCD-specific language: "crisis" maps to vaso-occlusive episode, "tired" in SCD context flags possible anemia exacerbation, shortness of breath triggers acute chest syndrome evaluation.
+
+2. **Causal Chain Building** — The core intelligence. Uses Claude Opus with extended thinking to trace biological mechanisms from symptoms back to root causes. Searches medical literature via Exa and scrapes research papers via FireCrawl to ground its reasoning in evidence. Produces 2-4 causal chains with confidence scores and mechanism descriptions at every link.
+
+3. **Actionable Recommendations** — Generates suggestions stratified by urgency (urgent / discuss with doctor / informational) and audience (patient vs. healthcare provider). Never provides direct medical advice — always framed as "consider discussing with your hematologist."
+
+## Three Visualization Modes
+
+TRACE presents causal chains through three complementary views:
+
+### Chain View
+A vertical node graph showing the causal pathway from symptom to root cause. Each node is color-coded by type (symptom, mechanism, root cause) and displays the biological mechanism linking it to the next node. Connections show strength indicators (strong, moderate, possible). Built with React Flow and dagre layout.
+
+### Timeline View
+Renders the same causal data on a temporal axis, showing how triggers and mechanisms unfold over time. Useful for understanding acute episodes where sequence matters — did dehydration precede the pain, or did pain-induced stress cause the dehydration?
+
+### Body Map View
+An anatomical overlay showing which body systems are involved in each causal chain. Helps patients and doctors see at a glance that their "leg pain" connects to their "fatigue" through a shared circulatory mechanism.
+
+## Who It's For
+
+- **Sickle cell patients** who want to understand their body, not just endure it
+- **Caregivers and parents** managing complex symptom patterns for children with SCD
+- **Hematologists and care teams** who want structured causal hypotheses to discuss during visits
+- **Researchers** studying cross-system SCD manifestations
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router, Turbopack) |
+| AI Models | Claude Opus 4.6 (causal reasoning), Claude Sonnet 4.5 (parsing, recommendations) |
+| Streaming | Server-Sent Events (SSE) |
+| Database | PostgreSQL + Drizzle ORM (10 tables) |
+| Health Data | Apple Health XML import pipeline |
+| Research | Exa search API, FireCrawl scraping |
+| Knowledge | Obsidian Local REST API |
+| UI | Tailwind v4, shadcn/ui, React Flow, GSAP, Motion |
+| Docs | Fumadocs |
