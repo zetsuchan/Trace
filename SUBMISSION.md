@@ -1,11 +1,11 @@
 # TRACE — Submission Summary
 
-TRACE is a sickle cell causal intelligence tool that traces symptoms to biological root causes across body systems. I built it because I have sickle cell disease, and no tool connects the dots my body forces me to — why cold weather led to congestion led to a pain crisis.
+TRACE is actionable preventative causal intelligence for chronic disease. Instead of telling patients what they already know — that they're in pain — TRACE traces *why*, connecting symptoms across body systems to their biological root causes.
 
-TRACE addresses Problem Statement 2: Break the Barriers. Expert hematology knowledge is locked behind specialist visits. TRACE puts causal reasoning directly in the patient's hands.
+I built this because I have sickle cell disease. A sinoplasty fixed my chronic back pain. No doctor connected sinus inflammation to sickling pain in my spine. TRACE is the tool I needed — one that reasons across systems the way the disease actually moves.
 
-Three Claude agents power the pipeline. A Sonnet 4.5 Symptom Analyzer parses natural language into structured symptoms. An Opus 4.6 Causal Chain Builder uses extended thinking and tool use to trace pathophysiology chains, autonomously searching Exa and scraping FireCrawl for medical evidence. A Sonnet 4.5 Recommendation Agent generates urgency-rated suggestions.
+Three Claude agents power a real-time pipeline. Sonnet 4.5 parses natural language symptoms. Opus 4.6 with extended thinking traces causal chains across pathophysiology, autonomously pulling evidence through Exa and FireCrawl MCP tools. A second Sonnet 4.5 agent generates urgency-rated, actionable recommendations.
 
-Results render in three visualization modes: interactive branching cards, React Flow timeline graphs, and animated linear chain reveals. Six years of Apple Health data — 2.5 million records — provide personal baselines. Traces save to PostgreSQL and Obsidian via MCP integrations.
+The UI is designed for patients, not clinicians. Agent outputs render as interactive visual chains — branching cards, animated reveals, and React Flow graphs — so users *see* the causal reasoning instead of reading walls of text. The interface is smooth, mobile-ready, and built on patterns that translate directly to native apps.
 
-This is patient-centered AI.
+Six years of Apple Health data provide personal baselines. The architecture is domain-agnostic — any chronic condition fits the same pipeline.

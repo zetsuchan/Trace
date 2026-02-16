@@ -55,8 +55,20 @@ Same trace data, three ways to understand it:
 | AI | Claude Opus 4.6 + Sonnet 4.5 via @anthropic-ai/sdk |
 | Database | PostgreSQL + Drizzle ORM (10 tables) |
 | MCP | Exa Search, FireCrawl, Obsidian REST API |
+| Linting | OxC suite — oxlint + oxfmt (Rust-based, near-instant) |
+| Video | Remotion (React-based video generation) |
 
 ## Getting Started
+
+### Prerequisites
+
+- **Node.js** 18+
+- **PostgreSQL** running locally (not Docker, not Vercel Postgres — a local Postgres instance)
+  - macOS: `brew install postgresql@17 && brew services start postgresql@17`
+  - Or use [Postgres.app](https://postgresapp.com)
+- API keys for: Anthropic, Exa, FireCrawl, Obsidian Local REST API (optional)
+
+### Setup
 
 ```bash
 # Install dependencies
@@ -64,19 +76,26 @@ npm install
 
 # Set up environment
 cp .env.example .env.local
-# Add: ANTHROPIC_API_KEY, EXA_API_KEY, FIRECRAWL_API_KEY, OBSIDIAN_API_KEY
+# Fill in your keys:
+#   ANTHROPIC_API_KEY=sk-ant-...
+#   DATABASE_URL=postgresql://YOUR_USER@localhost:5432/trace
+#   EXA_API_KEY=...
+#   FIRECRAWL_API_KEY=...
+#   OBSIDIAN_API_KEY=... (optional)
 
-# Set up database
+# Create the local database and push schema
 createdb trace
 npm run db:push
 npm run db:seed
 
-# Import health data (optional — 1.38GB Apple Health export)
+# Import Apple Health data (optional — requires an Apple Health XML export)
 npm run db:import-health
 
 # Start dev server
 npm run dev
 ```
+
+> **Note:** This project uses a local PostgreSQL database connected via `DATABASE_URL` in your `.env.local`. There is no Docker setup or cloud database — just Postgres running on your machine. Drizzle ORM handles the schema and migrations.
 
 ## Pages
 
