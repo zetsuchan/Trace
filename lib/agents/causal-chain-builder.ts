@@ -1,5 +1,6 @@
-import { anthropic } from "@/lib/claude";
-import type Anthropic from "@anthropic-ai/sdk";
+import { generateText, tool } from "ai";
+import { z } from "zod";
+import { openrouter } from "@/lib/claude";
 import { searchExa } from "@/lib/tools/exa";
 import { scrapeUrl } from "@/lib/tools/firecrawl";
 import type { SymptomAnalysis } from "./symptom-analyzer";
@@ -74,122 +75,48 @@ Return valid JSON:
   "summary": "2-3 sentence plain-language summary of findings"
 }`;
 
-// ── Tools ────────────────────────────────────
-const tools: Anthropic.Messages.Tool[] = [
-  {
-    name: "search_medical_research",
-    description:
-      "Search for medical research and sickle cell disease information relevant to the patient's symptoms",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        query: {
-          type: "string",
-          description:
-            "Search query about SCD symptoms, mechanisms, or treatments",
-        },
-      },
-      required: ["query"],
-    },
-  },
-  {
-    name: "scrape_article",
-    description:
-      "Scrape the full content of a medical article or research paper for detailed information",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        url: {
-          type: "string",
-          description: "URL of the article to scrape",
-        },
-      },
-      required: ["url"],
-    },
-  },
-];
-
 // ── Agent Function ───────────────────────────
 export async function buildCausalChains(
   symptoms: SymptomAnalysis,
 ): Promise<CausalChainResult> {
-  const promptText = `Analyze these parsed symptoms and build causal chains:\n\n${JSON.stringify(symptoms, null, 2)}`;
-
-  const params = {
-    model: "claude-opus-4-6" as const,
-    max_tokens: 16000,
-    thinking: {
-      type: "enabled" as const,
-      budget_tokens: 4000,
-    },
+  const { text } = await generateText({
+    model: openrouter("moonshotai/kimi-k2.5"),
     system: CAUSAL_CHAIN_PROMPT,
-    tools,
-  };
+    prompt: `Analyze these parsed symptoms and build causal chains:\n\n${JSON.stringify(symptoms, null, 2)}`,
+    maxOutputTokens: 16000,
+    maxSteps: 5,
+    tools: {
+      search_medical_research: tool({
+        description:
+          "Search for medical research and sickle cell disease information relevant to the patient's symptoms",
+        parameters: z.object({
+          query: z.string().describe("Search query about SCD symptoms, mechanisms, or treatments"),
+        }),
+        execute: async ({ query }) => {
+          const results = await searchExa(query);
+          return JSON.stringify(results, null, 2);
+        },
+      }),
+      scrape_article: tool({
+        description:
+          "Scrape the full content of a medical article or research paper for detailed information",
+        parameters: z.object({
+          url: z.string().describe("URL of the article to scrape"),
+        }),
+        execute: async ({ url }) => scrapeUrl(url),
+      }),
+    },
+  });
 
-  let messages: Anthropic.Messages.MessageParam[] = [{ role: "user" as const, content: promptText }];
-  let response = await anthropic.messages.create({ ...params, messages });
-
-  // ── Tool-use loop ──────────────────────────
-  while (response.stop_reason === "tool_use") {
-    const toolUseBlocks = response.content.filter(
-      (b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use",
-    );
-
-    const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
-
-    for (const block of toolUseBlocks) {
-      let result: string;
-      const input = block.input as Record<string, string>;
-
-      if (block.name === "search_medical_research") {
-        const results = await searchExa(input.query);
-        result = JSON.stringify(results, null, 2);
-      } else if (block.name === "scrape_article") {
-        result = await scrapeUrl(input.url);
-      } else {
-        result = JSON.stringify({ error: `Unknown tool: ${block.name}` });
-      }
-
-      toolResults.push({
-        type: "tool_result",
-        tool_use_id: block.id,
-        content: result,
-      });
-    }
-
-    messages = [
-      ...messages,
-      { role: "assistant" as const, content: response.content as Anthropic.Messages.ContentBlockParam[] },
-      { role: "user" as const, content: toolResults },
-    ];
-
-    response = await anthropic.messages.create({ ...params, messages });
-  }
-
-  // ── Parse final response ───────────────────
-  let thinkingText = "";
-  let responseText = "";
-
-  for (const block of response.content) {
-    if (block.type === "thinking") {
-      thinkingText = block.thinking;
-    } else if (block.type === "text") {
-      responseText = block.text;
-    }
-  }
-
-  // Strip markdown fences
-  let jsonText = responseText.trim();
+  let jsonText = text.trim();
   const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenceMatch) {
-    jsonText = fenceMatch[1].trim();
-  }
+  if (fenceMatch) jsonText = fenceMatch[1].trim();
 
   const parsed = JSON.parse(jsonText);
 
   return {
     chains: parsed.chains || [],
     summary: parsed.summary || "",
-    thinking: thinkingText,
+    thinking: "",
   };
 }

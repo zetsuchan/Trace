@@ -1,5 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 
-const anthropic = new Anthropic();
-
-export { anthropic };
+export const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});

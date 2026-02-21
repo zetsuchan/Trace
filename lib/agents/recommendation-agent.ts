@@ -1,4 +1,5 @@
-import { anthropic } from "@/lib/claude";
+import { generateText } from "ai";
+import { openrouter } from "@/lib/claude";
 import type { CausalChain, Suggestion } from "@/lib/types";
 
 // ── Types ────────────────────────────────────
@@ -62,26 +63,16 @@ export async function generateRecommendations(
   chains: CausalChain[],
   summary: string,
 ): Promise<RecommendationResult> {
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250929",
-    max_tokens: 2000,
+  const { text } = await generateText({
+    model: openrouter("minimax/minimax-m2.5"),
     system: RECOMMENDATION_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `Based on these causal chains and summary, generate recommendations:\n\nSUMMARY: ${summary}\n\nCHAINS:\n${JSON.stringify(chains, null, 2)}`,
-      },
-    ],
+    prompt: `Based on these causal chains and summary, generate recommendations:\n\nSUMMARY: ${summary}\n\nCHAINS:\n${JSON.stringify(chains, null, 2)}`,
+    maxOutputTokens: 2000,
   });
-
-  const text =
-    response.content[0].type === "text" ? response.content[0].text : "";
 
   let jsonText = text.trim();
   const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenceMatch) {
-    jsonText = fenceMatch[1].trim();
-  }
+  if (fenceMatch) jsonText = fenceMatch[1].trim();
 
   const parsed = JSON.parse(jsonText);
   return { suggestions: parsed.suggestions || [] };

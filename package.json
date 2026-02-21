@@ -18,7 +18,8 @@
     "test:suite": "npx tsx lib/test-suite.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "latest",
+    "@openrouter/ai-sdk-provider": "^2.2.3",
+    "ai": "^6.0.97",
     "@gsap/react": "^2.1.0",
     "@phosphor-icons/react": "^2.1.10",
     "@types/dagre": "^0.7.53",

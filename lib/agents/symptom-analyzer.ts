@@ -1,4 +1,5 @@
-import { anthropic } from "@/lib/claude";
+import { generateText } from "ai";
+import { openrouter } from "@/lib/claude";
 
 // ── Types ────────────────────────────────────
 export interface ParsedSymptom {
@@ -60,27 +61,16 @@ Be thorough. Separate compound symptoms into individual entries. A statement lik
 export async function analyzeSymptoms(
   inputText: string,
 ): Promise<SymptomAnalysis> {
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250929",
-    max_tokens: 2000,
+  const { text } = await generateText({
+    model: openrouter("minimax/minimax-m2.5"),
     system: SYMPTOM_ANALYZER_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `Parse the following patient input:\n\n"${inputText}"`,
-      },
-    ],
+    prompt: `Parse the following patient input:\n\n"${inputText}"`,
+    maxOutputTokens: 2000,
   });
 
-  const text =
-    response.content[0].type === "text" ? response.content[0].text : "";
-
-  // Strip markdown fences if present
   let jsonText = text.trim();
   const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenceMatch) {
-    jsonText = fenceMatch[1].trim();
-  }
+  if (fenceMatch) jsonText = fenceMatch[1].trim();
 
   const parsed = JSON.parse(jsonText) as SymptomAnalysis;
   parsed.rawInput = inputText;
