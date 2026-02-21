@@ -1,4 +1,4 @@
-import { generateText, tool } from "ai";
+import { generateText, tool, stepCountIs } from "ai";
 import { z } from "zod";
 import { openrouter } from "@/lib/claude";
 import { searchExa } from "@/lib/tools/exa";
@@ -84,12 +84,12 @@ export async function buildCausalChains(
     system: CAUSAL_CHAIN_PROMPT,
     prompt: `Analyze these parsed symptoms and build causal chains:\n\n${JSON.stringify(symptoms, null, 2)}`,
     maxOutputTokens: 16000,
-    maxSteps: 5,
+    stopWhen: stepCountIs(5),
     tools: {
       search_medical_research: tool({
         description:
           "Search for medical research and sickle cell disease information relevant to the patient's symptoms",
-        parameters: z.object({
+        inputSchema: z.object({
           query: z.string().describe("Search query about SCD symptoms, mechanisms, or treatments"),
         }),
         execute: async ({ query }) => {
@@ -100,7 +100,7 @@ export async function buildCausalChains(
       scrape_article: tool({
         description:
           "Scrape the full content of a medical article or research paper for detailed information",
-        parameters: z.object({
+        inputSchema: z.object({
           url: z.string().describe("URL of the article to scrape"),
         }),
         execute: async ({ url }) => scrapeUrl(url),
