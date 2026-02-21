@@ -13,6 +13,7 @@ import {
   Database,
   MagnifyingGlass,
   Globe,
+  Spinner,
 } from "@phosphor-icons/react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -28,9 +29,17 @@ interface AgentState {
 
 export type TraceStage = "idle" | "symptoms" | "chains" | "recommendations" | "complete";
 
+export interface ToolCallEvent {
+  tool: "exa" | "firecrawl";
+  name: string;
+  input: string;
+  status: "calling" | "done";
+}
+
 interface AgentActivityPanelProps {
   stage: TraceStage;
   visible: boolean;
+  toolCalls: ToolCallEvent[];
 }
 
 // ── Agent definitions ────────────────────────
@@ -131,61 +140,116 @@ function StatusIcon({ status }: { status: AgentStatus }) {
   }
 }
 
-// ── MCP connection dot ───────────────────────
-function McpConnections({ stage }: { stage: TraceStage }) {
-  const connections = [
+// ── Tool calls panel ─────────────────────────
+function ToolCallsPanel({ toolCalls, stage }: { toolCalls: ToolCallEvent[]; stage: TraceStage }) {
+  // Deduplicate: keep latest status per (tool, input) pair
+  const seen = new Map<string, ToolCallEvent>();
+  for (const call of toolCalls) {
+    const key = `${call.tool}:${call.input}`;
+    seen.set(key, call);
+  }
+  const deduped = Array.from(seen.values());
+
+  const rows: { tool: string; label: string; icon: React.ReactNode; calls: ToolCallEvent[] }[] = [
     {
+      tool: "exa",
       label: "Exa Search",
-      icon: <MagnifyingGlass size={14} weight="duotone" className="text-muted-foreground" />,
-      isActive: stage === "chains",
+      icon: <MagnifyingGlass size={14} weight="duotone" />,
+      calls: deduped.filter((c) => c.tool === "exa"),
     },
     {
+      tool: "firecrawl",
       label: "FireCrawl",
-      icon: <Globe size={14} weight="duotone" className="text-muted-foreground" />,
-      isActive: stage === "chains",
+      icon: <Globe size={14} weight="duotone" />,
+      calls: deduped.filter((c) => c.tool === "firecrawl"),
     },
     {
+      tool: "obsidian",
       label: "Obsidian",
-      icon: <Database size={14} weight="duotone" className="text-muted-foreground" />,
-      isActive: stage === "complete",
+      icon: <Database size={14} weight="duotone" />,
+      calls: [],
     },
   ];
 
   return (
-    <div className="flex flex-col gap-2">
-      {connections.map((conn) => (
-        <div key={conn.label} className="flex items-center gap-2.5 px-1">
-          <div className="flex items-center gap-2">
-            {conn.icon}
-            <span className="text-xs text-muted-foreground">{conn.label}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="relative flex h-2 w-2 items-center justify-center">
-              {conn.isActive && (
-                <motion.div
-                  className="absolute inset-0 rounded-full bg-accent-safe"
-                  animate={{ scale: [1, 1.8, 1], opacity: [0.6, 0, 0.6] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                />
-              )}
-              <div
-                className={`relative h-2 w-2 rounded-full ${
-                  conn.isActive ? "bg-accent-safe" : "bg-muted-foreground/40"
-                }`}
-              />
+    <div className="flex flex-col gap-2.5">
+      {rows.map((row) => {
+        const hasActiveCalls = row.calls.some((c) => c.status === "calling");
+        const hasDoneCalls = row.calls.some((c) => c.status === "done");
+        const obsidianActive = row.tool === "obsidian" && stage === "complete";
+
+        const dotColor = hasActiveCalls || obsidianActive
+          ? "bg-accent-safe"
+          : hasDoneCalls
+            ? "bg-primary/60"
+            : "bg-muted-foreground/30";
+
+        const statusLabel = hasActiveCalls
+          ? "Active"
+          : hasDoneCalls
+            ? "Done"
+            : obsidianActive
+              ? "Active"
+              : "Idle";
+
+        return (
+          <div key={row.tool} className="flex flex-col gap-1">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                {row.icon}
+                <span className="text-xs">{row.label}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="relative flex h-2 w-2 items-center justify-center">
+                  {(hasActiveCalls || obsidianActive) && (
+                    <motion.div
+                      className="absolute inset-0 rounded-full bg-accent-safe"
+                      animate={{ scale: [1, 1.8, 1], opacity: [0.6, 0, 0.6] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    />
+                  )}
+                  <div className={`relative h-2 w-2 rounded-full ${dotColor}`} />
+                </div>
+                <span className="text-[10px] text-muted-foreground">{statusLabel}</span>
+              </div>
             </div>
-            <span className="text-[10px] text-muted-foreground">
-              {conn.isActive ? "Connected" : "Idle"}
-            </span>
+
+            {/* Individual call rows */}
+            <AnimatePresence>
+              {row.calls.map((call) => (
+                <motion.div
+                  key={call.input}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="ml-5 flex items-center gap-2 overflow-hidden rounded-md border border-border/40 bg-muted/30 px-2 py-1"
+                >
+                  {call.status === "calling" ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Spinner size={10} className="text-primary shrink-0" />
+                    </motion.div>
+                  ) : (
+                    <CheckCircle size={10} weight="fill" className="text-accent-safe shrink-0" />
+                  )}
+                  <span className="truncate text-[10px] text-muted-foreground" title={call.input}>
+                    {call.input.length > 48 ? call.input.slice(0, 48) + "…" : call.input}
+                  </span>
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 // ── Main panel ───────────────────────────────
-export function AgentActivityPanel({ stage, visible }: AgentActivityPanelProps) {
+export function AgentActivityPanel({ stage, visible, toolCalls }: AgentActivityPanelProps) {
   const agents = getAgentStates(stage);
   const [elapsed, setElapsed] = useState(0);
 
@@ -246,7 +310,6 @@ export function AgentActivityPanel({ stage, visible }: AgentActivityPanelProps) 
                           : "border-transparent bg-muted/30"
                     }`}
                   >
-                    {/* Pulse bar for running agent */}
                     {agent.status === "running" && (
                       <motion.div
                         className="absolute inset-y-0 left-0 w-0.5 rounded-full bg-primary"
@@ -299,9 +362,12 @@ export function AgentActivityPanel({ stage, visible }: AgentActivityPanelProps) 
                 ))}
               </div>
 
-              {/* MCP connections */}
+              {/* Tool calls */}
               <div className="mt-4 border-t border-border/40 pt-3">
-                <McpConnections stage={stage} />
+                <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Tool Calls
+                </p>
+                <ToolCallsPanel toolCalls={toolCalls} stage={stage} />
               </div>
 
               {/* Progress bar */}

@@ -47,7 +47,7 @@ export async function runTrace(
     message: "Tracing causal connections across body systems...",
   });
 
-  const chainResult = await buildCausalChains(symptoms);
+  const chainResult = await buildCausalChains(symptoms, send);
 
   // Stream thinking from the chain builder
   if (chainResult.thinking) {

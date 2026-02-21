@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Paperclip, X } from "@phosphor-icons/react";
 import { ReasoningDisplay } from "@/components/reasoning-display";
-import { AgentActivityPanel, type TraceStage } from "@/components/agent-activity-panel";
+import { AgentActivityPanel, type TraceStage, type ToolCallEvent } from "@/components/agent-activity-panel";
 import { ChainView } from "@/components/chain-view";
 import { BranchingView } from "@/components/branching-view";
 import { TimelineView } from "@/components/timeline-view";
@@ -174,6 +174,7 @@ export function TraceContent() {
   const [viewMode, setViewMode] = useState<"branching" | "linear" | "timeline">("branching");
   const [agentStage, setAgentStage] = useState<TraceStage>("idle");
   const [showAgentPanel, setShowAgentPanel] = useState(true);
+  const [toolCalls, setToolCalls] = useState<ToolCallEvent[]>([]);
   const started = useRef(false);
 
   // Auto-hide agent panel after results arrive
@@ -234,7 +235,21 @@ export function TraceContent() {
                     if (data.message) setThinking((prev) => prev + "\n" + data.message);
                     break;
                   case "thinking":
-                    if (data.content) setThinking(data.content);
+                    if (data.content) setThinking((prev) => prev + (prev ? "\n\n" : "") + data.content);
+                    break;
+                  case "tool_call":
+                    if (data.tool) {
+                      setToolCalls((prev) => {
+                        const key = `${data.tool}:${data.input}`;
+                        const idx = prev.findIndex((c) => `${c.tool}:${c.input}` === key);
+                        if (idx !== -1) {
+                          const updated = [...prev];
+                          updated[idx] = data as ToolCallEvent;
+                          return updated;
+                        }
+                        return [...prev, data as ToolCallEvent];
+                      });
+                    }
                     break;
                   case "symptoms":
                     setAgentStage("symptoms");
@@ -450,6 +465,7 @@ export function TraceContent() {
       <AgentActivityPanel
         stage={agentStage}
         visible={showAgentPanel && (phase === "thinking" || phase === "result")}
+        toolCalls={toolCalls}
       />
 
       {/* Thinking — visible during stream */}

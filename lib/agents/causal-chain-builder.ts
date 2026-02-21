@@ -13,10 +13,15 @@ export interface CausalChainResult {
   thinking: string;
 }
 
+type SendFn = (event: string, data: unknown) => void;
+
 // ── System Prompt ────────────────────────────
 const CAUSAL_CHAIN_PROMPT = `You are a sickle cell disease pathophysiology expert. Your job is to trace CAUSAL CHAINS from symptoms back to root causes, through the biological mechanisms that connect them.
 
 You receive structured symptom data and must build causal chains showing WHY the patient feels what they feel.
+
+RESEARCH REQUIREMENT:
+Before building the causal chains, you MUST use the search_medical_research tool at least once to find relevant recent medical research on the patient's primary symptoms. Use the scrape_article tool on promising results to get full details. This grounds your chains in current evidence.
 
 SCD PATHOPHYSIOLOGY KNOWLEDGE:
 - HbS polymerization triggers: dehydration, hypoxia, acidosis, cold, stress
@@ -78,7 +83,10 @@ Return valid JSON:
 // ── Agent Function ───────────────────────────
 export async function buildCausalChains(
   symptoms: SymptomAnalysis,
+  send?: SendFn,
 ): Promise<CausalChainResult> {
+  let reasoning = "";
+
   const { text } = await generateText({
     model: openrouter("moonshotai/kimi-k2.5"),
     system: CAUSAL_CHAIN_PROMPT,
@@ -93,7 +101,9 @@ export async function buildCausalChains(
           query: z.string().describe("Search query about SCD symptoms, mechanisms, or treatments"),
         }),
         execute: async ({ query }) => {
+          send?.("tool_call", { tool: "exa", name: "Exa Search", input: query, status: "calling" });
           const results = await searchExa(query);
+          send?.("tool_call", { tool: "exa", name: "Exa Search", input: query, status: "done" });
           return JSON.stringify(results, null, 2);
         },
       }),
@@ -103,8 +113,19 @@ export async function buildCausalChains(
         inputSchema: z.object({
           url: z.string().describe("URL of the article to scrape"),
         }),
-        execute: async ({ url }) => scrapeUrl(url),
+        execute: async ({ url }) => {
+          send?.("tool_call", { tool: "firecrawl", name: "FireCrawl", input: url, status: "calling" });
+          const result = await scrapeUrl(url);
+          send?.("tool_call", { tool: "firecrawl", name: "FireCrawl", input: url, status: "done" });
+          return result;
+        },
       }),
+    },
+    onStepFinish: (step) => {
+      if (step.reasoningText) {
+        reasoning += step.reasoningText;
+        send?.("thinking", { content: step.reasoningText });
+      }
     },
   });
 
@@ -117,6 +138,6 @@ export async function buildCausalChains(
   return {
     chains: parsed.chains || [],
     summary: parsed.summary || "",
-    thinking: "",
+    thinking: reasoning,
   };
 }
