@@ -24,8 +24,18 @@ interface TimelineViewProps {
   currentSymptom: string;
 }
 
+interface TimelineEventData {
+  isToday?: boolean;
+  daysAgo: number;
+  nodeType: string;
+  event: string;
+  description: string;
+  trigger?: string;
+  icon: string;
+}
+
 // Timeline event node component
-function TimelineEventNode({ data }: { data: any }) {
+function TimelineEventNode({ data }: { data: TimelineEventData }) {
   const isToday = data.isToday;
   const daysAgo = data.daysAgo;
   const nodeType = data.nodeType;
@@ -300,7 +310,7 @@ function TimelineFlowInner({ currentSymptom }: TimelineViewProps) {
   }, [fitView]);
 
   return (
-    <div className="relative h-[700px] w-full rounded-xl border border-chain-connection/20 bg-bg-elevated overflow-hidden">
+    <div className="relative h-[450px] w-full rounded-xl border border-chain-connection/20 bg-bg-elevated overflow-hidden md:h-[700px]">
       {/* Header overlay */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -324,8 +334,8 @@ function TimelineFlowInner({ currentSymptom }: TimelineViewProps) {
         edgeTypes={edgeTypes}
         fitView
         fitViewOptions={{ padding: 0.3 }}
-        minZoom={0.4}
-        maxZoom={1.2}
+        minZoom={0.3}
+        maxZoom={1.5}
         proOptions={{ hideAttribution: true }}
       >
         <Background

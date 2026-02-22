@@ -286,7 +286,7 @@ export function TraceContent() {
   // If no query provided, show input UI (must be after all hooks)
   if (!inputText) {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-8">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 sm:gap-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-text-primary">New Trace</h1>
           <p className="mt-2 text-sm text-text-secondary">
@@ -296,12 +296,12 @@ export function TraceContent() {
 
         {/* Scrolling marquee of suggestions */}
         <div className="w-full overflow-hidden" aria-label="Example symptoms">
-          <div className="flex gap-3 animate-[marquee_40s_linear_infinite] hover:[animation-play-state:paused]">
+          <div className="flex gap-3 animate-[marquee_40s_linear_infinite] hover:[animation-play-state:paused] active:[animation-play-state:paused]">
             {[...SYMPTOM_SUGGESTIONS, ...SYMPTOM_SUGGESTIONS].map((suggestion, i) => (
               <button
                 key={i}
                 onClick={() => setLocalInput(suggestion)}
-                className="shrink-0 rounded-lg border border-border bg-card px-4 py-2 text-xs text-muted-foreground transition-all hover:border-chain-active/40 hover:text-chain-active hover:bg-chain-active/5"
+                className="shrink-0 rounded-lg border border-border bg-card px-4 py-2.5 min-h-[44px] text-xs text-muted-foreground transition-all hover:border-chain-active/40 hover:text-chain-active hover:bg-chain-active/5 active:bg-chain-active/10"
               >
                 {suggestion}
               </button>
@@ -376,7 +376,7 @@ export function TraceContent() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-text-primary"
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 min-h-[44px] text-xs text-muted-foreground transition-colors hover:text-text-primary active:bg-bg-elevated"
               aria-label="Upload a file"
             >
               <Paperclip size={14} />
@@ -388,10 +388,10 @@ export function TraceContent() {
                 <button
                   type="button"
                   onClick={() => setUploadedFile(null)}
-                  className="ml-0.5 rounded-full p-0.5 hover:bg-chain-active/20 transition-colors"
+                  className="ml-0.5 rounded-full p-1 hover:bg-chain-active/20 transition-colors"
                   aria-label="Remove file"
                 >
-                  <X size={10} weight="bold" />
+                  <X size={12} weight="bold" />
                 </button>
               </span>
             )}

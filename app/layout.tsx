@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import { Sidebar } from "@/components/sidebar";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { LayoutShell } from "@/components/layout-shell";
 import "./globals.css";
 
@@ -15,6 +16,16 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
   variable: "--font-heading",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0F0E0D" },
+    { media: "(prefers-color-scheme: light)", color: "#FAF8F6" },
+  ],
+};
 
 export const metadata: Metadata = {
   title: "TRACE — Sickle Cell Causal Intelligence",
@@ -31,6 +42,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <body className="min-h-screen bg-bg-deep text-text-primary font-[family-name:var(--font-body)]">
         <Sidebar />
+        <MobileBottomNav />
         <LayoutShell>{children}</LayoutShell>
       </body>
     </html>

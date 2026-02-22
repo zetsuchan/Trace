@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect, type RefObject } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Card,
@@ -314,6 +314,22 @@ const DELTA_COLOR: Record<CardStatus, string> = {
 };
 
 // ─────────────────────────────────────────────
+// Responsive container width hook
+// ─────────────────────────────────────────────
+
+function useContainerWidth(defaultWidth = 720): { ref: RefObject<HTMLDivElement | null>; width: number } {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(defaultWidth);
+  useEffect(() => {
+    if (!ref.current) return;
+    const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    ro.observe(ref.current);
+    return () => ro.disconnect();
+  }, []);
+  return { ref, width };
+}
+
+// ─────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────
 
@@ -431,9 +447,9 @@ export default function AnalyticsPage() {
     setUploadedFiles((prev) => prev.filter((f) => f.id !== id));
   }, []);
 
-  // ─── SVG chart dimensions ───
-  const chartW = 720;
-  const chartH = 220;
+  // ─── SVG chart dimensions (responsive) ───
+  const { ref: chartContainerRef, width: chartW } = useContainerWidth();
+  const chartH = Math.max(180, Math.round(chartW * 0.3));
   const pad = { top: 20, bottom: 30, left: 45, right: 15 };
 
   // ─── Heart rate chart data ───
@@ -550,7 +566,7 @@ export default function AnalyticsPage() {
           </h1>
           <p className="mt-2 text-sm text-text-secondary">Loading health metrics...</p>
         </div>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-32 animate-pulse rounded-xl border border-chain-connection/10 bg-bg-elevated" />
           ))}
@@ -616,7 +632,7 @@ export default function AnalyticsPage() {
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
-          className={`flex cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed p-12 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+          className={`flex cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed p-6 sm:p-12 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             isDragging
               ? "border-chain-active bg-chain-active/10"
               : "border-chain-connection/30 bg-bg-elevated/50 hover:border-chain-connection/50 hover:bg-bg-elevated"
@@ -679,7 +695,7 @@ export default function AnalyticsPage() {
                     <button
                       onClick={() => removeFile(file.id)}
                       aria-label={`Remove ${file.name}`}
-                      className="rounded-lg p-2 text-text-tertiary opacity-0 transition-all hover:bg-bg-surface hover:text-red-400 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
+                      className="rounded-lg p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-text-tertiary opacity-100 sm:opacity-0 transition-all hover:bg-bg-surface hover:text-red-400 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18" />
@@ -706,7 +722,7 @@ export default function AnalyticsPage() {
           <p className="mt-1 text-sm text-text-tertiary">Current readings vs. your established baseline</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" role="list" aria-label="Baseline metrics">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" role="list" aria-label="Baseline metrics">
           {baselineCards.map((card, index) => (
             <motion.div
               key={card.label}
@@ -768,11 +784,10 @@ export default function AnalyticsPage() {
             <p className="text-xs text-text-tertiary">Resting HR over past 30 days (bpm)</p>
           </CardHeader>
           <CardContent>
-            <div className="w-full overflow-x-auto">
+            <div ref={chartContainerRef} className="w-full">
               <svg
                 viewBox={`0 0 ${chartW} ${chartH}`}
                 className="w-full"
-                style={{ minWidth: 480 }}
                 role="img"
                 aria-label="Heart rate trend line chart showing 30 days of data"
               >
@@ -784,7 +799,7 @@ export default function AnalyticsPage() {
                   return (
                     <g key={tick}>
                       <line x1={pad.left} y1={y} x2={chartW - pad.right} y2={y} stroke="var(--color-chain-connection)" strokeOpacity="0.2" strokeWidth="1" />
-                      <text x={pad.left - 8} y={y + 4} textAnchor="end" fill="var(--color-text-tertiary)" fontSize="10" fontFamily="inherit">
+                      <text x={pad.left - 8} y={y + 4} textAnchor="end" fill="var(--color-text-tertiary)" fontSize="11" fontFamily="inherit">
                         {tick}
                       </text>
                     </g>
@@ -797,7 +812,7 @@ export default function AnalyticsPage() {
                   const idx = i * 5;
                   const x = pad.left + (idx / (hrData.length - 1)) * plotW;
                   return (
-                    <text key={d.date} x={x} y={chartH - 8} textAnchor="middle" fill="var(--color-text-tertiary)" fontSize="10" fontFamily="inherit">
+                    <text key={d.date} x={x} y={chartH - 8} textAnchor="middle" fill="var(--color-text-tertiary)" fontSize="11" fontFamily="inherit">
                       {shortDate(d.date)}
                     </text>
                   );
@@ -865,11 +880,10 @@ export default function AnalyticsPage() {
             <p className="text-xs text-text-tertiary">Heart Rate Variability (SDNN) over past 30 days (ms) — lower values indicate autonomic stress</p>
           </CardHeader>
           <CardContent>
-            <div className="w-full overflow-x-auto">
+            <div className="w-full">
               <svg
                 viewBox={`0 0 ${chartW} ${chartH}`}
                 className="w-full"
-                style={{ minWidth: 480 }}
                 role="img"
                 aria-label="HRV trend line chart showing 30 days of data"
               >
@@ -881,7 +895,7 @@ export default function AnalyticsPage() {
                   return (
                     <g key={tick}>
                       <line x1={pad.left} y1={y} x2={chartW - pad.right} y2={y} stroke="var(--color-chain-connection)" strokeOpacity="0.2" strokeWidth="1" />
-                      <text x={pad.left - 8} y={y + 4} textAnchor="end" fill="var(--color-text-tertiary)" fontSize="10" fontFamily="inherit">
+                      <text x={pad.left - 8} y={y + 4} textAnchor="end" fill="var(--color-text-tertiary)" fontSize="11" fontFamily="inherit">
                         {tick}
                       </text>
                     </g>
@@ -894,7 +908,7 @@ export default function AnalyticsPage() {
                   const idx = i * 5;
                   const x = pad.left + (idx / (hrvData.length - 1)) * plotW;
                   return (
-                    <text key={d.date} x={x} y={chartH - 8} textAnchor="middle" fill="var(--color-text-tertiary)" fontSize="10" fontFamily="inherit">
+                    <text key={d.date} x={x} y={chartH - 8} textAnchor="middle" fill="var(--color-text-tertiary)" fontSize="11" fontFamily="inherit">
                       {shortDate(d.date)}
                     </text>
                   );
@@ -962,11 +976,10 @@ export default function AnalyticsPage() {
             <p className="text-xs text-text-tertiary">Nightly sleep hours — past 14 days</p>
           </CardHeader>
           <CardContent>
-            <div className="w-full overflow-x-auto">
+            <div className="w-full">
               <svg
                 viewBox={`0 0 ${chartW} ${chartH}`}
                 className="w-full"
-                style={{ minWidth: 480 }}
                 role="img"
                 aria-label="Sleep duration bar chart showing 14 days of data"
               >
@@ -989,7 +1002,7 @@ export default function AnalyticsPage() {
                         return (
                           <g key={tick}>
                             <line x1={sleepPad.left} y1={y} x2={chartW - sleepPad.right} y2={y} stroke="var(--color-chain-connection)" strokeOpacity="0.2" strokeWidth="1" />
-                            <text x={sleepPad.left - 8} y={y + 4} textAnchor="end" fill="var(--color-text-tertiary)" fontSize="10" fontFamily="inherit">
+                            <text x={sleepPad.left - 8} y={y + 4} textAnchor="end" fill="var(--color-text-tertiary)" fontSize="11" fontFamily="inherit">
                               {tick}h
                             </text>
                           </g>
@@ -1078,18 +1091,18 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             {/* Day-of-week header */}
-            <div className="grid grid-cols-7 gap-2 mb-2">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
               {weekDayLabels.map((label) => (
-                <div key={label} className="text-center text-[10px] font-bold uppercase tracking-[0.08em] text-text-tertiary">
+                <div key={label} className="text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] text-text-tertiary">
                   {label}
                 </div>
               ))}
             </div>
 
             {/* Calendar grid */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1 sm:gap-2">
               {riskWeeks.map((week, wi) => (
-                <div key={wi} className="grid grid-cols-7 gap-2">
+                <div key={wi} className="grid grid-cols-7 gap-1 sm:gap-2">
                   {week.map((day) => (
                     <div
                       key={day.date}

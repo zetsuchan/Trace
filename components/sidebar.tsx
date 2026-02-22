@@ -43,7 +43,7 @@ export function Sidebar() {
     <motion.aside
       initial={{ x: -20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      className="fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-chain-connection/20 bg-bg-surface p-6"
+      className="fixed left-0 top-0 z-50 hidden h-screen w-64 flex-col border-r border-chain-connection/20 bg-bg-surface p-6 md:flex"
       role="navigation"
       aria-label="Main navigation"
     >
@@ -66,7 +66,7 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              className={`group flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 isActive
                   ? "bg-chain-active/15 text-chain-active"
                   : "text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
@@ -96,7 +96,7 @@ export function Sidebar() {
         <button
           onClick={toggleTheme}
           aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-secondary transition-all hover:bg-bg-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-text-secondary transition-all hover:bg-bg-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span className="text-base" aria-hidden="true">{theme === "dark" ? "☀️" : "🌙"}</span>
           <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>

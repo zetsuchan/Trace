@@ -16,14 +16,14 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
   if (isFullWidth) {
     return (
-      <main className="min-h-screen px-8 py-8">
+      <main className="min-h-screen px-4 py-6 sm:px-8 sm:py-8">
         <div className="mx-auto max-w-[1100px]">{children}</div>
       </main>
     );
   }
 
   return (
-    <main className="ml-64 min-h-screen px-8 py-8">
+    <main className="min-h-screen px-4 py-6 pb-24 sm:px-8 sm:py-8 md:ml-64 md:pb-8">
       <div className="mx-auto max-w-[900px]">{children}</div>
     </main>
   );
