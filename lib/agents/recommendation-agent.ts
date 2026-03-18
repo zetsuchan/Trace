@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/claude";
+import { chat } from "@/lib/llm";
 import type { CausalChain, Suggestion } from "@/lib/types";
 
 // ── Types ────────────────────────────────────
@@ -62,9 +62,7 @@ export async function generateRecommendations(
   chains: CausalChain[],
   summary: string,
 ): Promise<RecommendationResult> {
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250929",
-    max_tokens: 2000,
+  const response = await chat({
     system: RECOMMENDATION_PROMPT,
     messages: [
       {
@@ -74,10 +72,7 @@ export async function generateRecommendations(
     ],
   });
 
-  const text =
-    response.content[0].type === "text" ? response.content[0].text : "";
-
-  let jsonText = text.trim();
+  let jsonText = response.text.trim();
   const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
     jsonText = fenceMatch[1].trim();

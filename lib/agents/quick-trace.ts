@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/claude";
+import { chat } from "@/lib/llm";
 import type { CausalChain, Suggestion } from "@/lib/types";
 
 type SendFn = (event: string, data: unknown) => void;
@@ -6,9 +6,7 @@ type SendFn = (event: string, data: unknown) => void;
 export async function runQuickTrace(inputText: string, send: SendFn) {
   send("status", { stage: "symptoms", message: "Analyzing symptoms..." });
 
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250929",
-    max_tokens: 4000,
+  const response = await chat({
     system: `You are a sickle cell disease specialist AI. Analyze the patient's symptoms.
 
 RESPOND WITH ONLY A JSON OBJECT. No prose before or after. No markdown fences. Just the raw JSON object.
@@ -22,12 +20,8 @@ Include 3-5 nodes in the chain. Urgency must be "urgent", "discuss", or "info". 
 
   send("status", { stage: "chains", message: "Building causal chain..." });
 
-  // Extract text from response
-  const textBlock = response.content.find((b) => b.type === "text");
-  const text = textBlock?.type === "text" ? textBlock.text : "";
-
   // Parse JSON from response — find the outermost { ... } block
-  let jsonStr = text.trim();
+  let jsonStr = response.text.trim();
   // Strip markdown fences if present
   jsonStr = jsonStr.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
   // Find the first { and last }

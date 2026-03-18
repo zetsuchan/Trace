@@ -36,6 +36,7 @@
     "jspdf": "^2.5.0",
     "motion": "latest",
     "next": "^16.1.0",
+    "openai": "^6.32.0",
     "postgres": "^3.4.0",
     "radix-ui": "^1.4.3",
     "react": "^19.0.0",

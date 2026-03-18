@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/claude";
+import { chat } from "@/lib/llm";
 
 // ── Types ────────────────────────────────────
 export interface ParsedSymptom {
@@ -60,9 +60,7 @@ Be thorough. Separate compound symptoms into individual entries. A statement lik
 export async function analyzeSymptoms(
   inputText: string,
 ): Promise<SymptomAnalysis> {
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250929",
-    max_tokens: 2000,
+  const response = await chat({
     system: SYMPTOM_ANALYZER_PROMPT,
     messages: [
       {
@@ -72,11 +70,8 @@ export async function analyzeSymptoms(
     ],
   });
 
-  const text =
-    response.content[0].type === "text" ? response.content[0].text : "";
-
   // Strip markdown fences if present
-  let jsonText = text.trim();
+  let jsonText = response.text.trim();
   const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
     jsonText = fenceMatch[1].trim();

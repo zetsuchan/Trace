@@ -1,5 +1,4 @@
-import { anthropic } from "@/lib/claude";
-import type Anthropic from "@anthropic-ai/sdk";
+import { chatWithTools, openRouterCausalModel } from "@/lib/llm";
 import { searchExa } from "@/lib/tools/exa";
 import { scrapeUrl } from "@/lib/tools/firecrawl";
 import type { SymptomAnalysis } from "./symptom-analyzer";
@@ -75,12 +74,12 @@ Return valid JSON:
 }`;
 
 // ── Tools ────────────────────────────────────
-const tools: Anthropic.Messages.Tool[] = [
+const tools = [
   {
     name: "search_medical_research",
     description:
       "Search for medical research and sickle cell disease information relevant to the patient's symptoms",
-    input_schema: {
+    parameters: {
       type: "object" as const,
       properties: {
         query: {
@@ -96,7 +95,7 @@ const tools: Anthropic.Messages.Tool[] = [
     name: "scrape_article",
     description:
       "Scrape the full content of a medical article or research paper for detailed information",
-    input_schema: {
+    parameters: {
       type: "object" as const,
       properties: {
         url: {
@@ -109,77 +108,36 @@ const tools: Anthropic.Messages.Tool[] = [
   },
 ];
 
+// ── Tool executor ────────────────────────────
+async function executeTool(
+  name: string,
+  input: Record<string, string>,
+): Promise<string> {
+  if (name === "search_medical_research") {
+    const results = await searchExa(input.query);
+    return JSON.stringify(results, null, 2);
+  } else if (name === "scrape_article") {
+    return await scrapeUrl(input.url);
+  }
+  return JSON.stringify({ error: `Unknown tool: ${name}` });
+}
+
 // ── Agent Function ───────────────────────────
 export async function buildCausalChains(
   symptoms: SymptomAnalysis,
 ): Promise<CausalChainResult> {
   const promptText = `Analyze these parsed symptoms and build causal chains:\n\n${JSON.stringify(symptoms, null, 2)}`;
 
-  const params = {
-    model: "claude-opus-4-6" as const,
-    max_tokens: 16000,
-    thinking: {
-      type: "enabled" as const,
-      budget_tokens: 4000,
-    },
+  const response = await chatWithTools({
+    model: openRouterCausalModel,
     system: CAUSAL_CHAIN_PROMPT,
+    userMessage: promptText,
     tools,
-  };
-
-  let messages: Anthropic.Messages.MessageParam[] = [{ role: "user" as const, content: promptText }];
-  let response = await anthropic.messages.create({ ...params, messages });
-
-  // ── Tool-use loop ──────────────────────────
-  while (response.stop_reason === "tool_use") {
-    const toolUseBlocks = response.content.filter(
-      (b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use",
-    );
-
-    const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
-
-    for (const block of toolUseBlocks) {
-      let result: string;
-      const input = block.input as Record<string, string>;
-
-      if (block.name === "search_medical_research") {
-        const results = await searchExa(input.query);
-        result = JSON.stringify(results, null, 2);
-      } else if (block.name === "scrape_article") {
-        result = await scrapeUrl(input.url);
-      } else {
-        result = JSON.stringify({ error: `Unknown tool: ${block.name}` });
-      }
-
-      toolResults.push({
-        type: "tool_result",
-        tool_use_id: block.id,
-        content: result,
-      });
-    }
-
-    messages = [
-      ...messages,
-      { role: "assistant" as const, content: response.content as Anthropic.Messages.ContentBlockParam[] },
-      { role: "user" as const, content: toolResults },
-    ];
-
-    response = await anthropic.messages.create({ ...params, messages });
-  }
-
-  // ── Parse final response ───────────────────
-  let thinkingText = "";
-  let responseText = "";
-
-  for (const block of response.content) {
-    if (block.type === "thinking") {
-      thinkingText = block.thinking;
-    } else if (block.type === "text") {
-      responseText = block.text;
-    }
-  }
+    executeTool,
+  });
 
   // Strip markdown fences
-  let jsonText = responseText.trim();
+  let jsonText = response.text.trim();
   const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
     jsonText = fenceMatch[1].trim();
@@ -190,6 +148,6 @@ export async function buildCausalChains(
   return {
     chains: parsed.chains || [],
     summary: parsed.summary || "",
-    thinking: thinkingText,
+    thinking: response.thinking || "",
   };
 }
