@@ -337,8 +337,8 @@ export function TraceContent() {
           </div>
           <p className="text-xs text-muted-foreground text-center">
             {analysisMode === "deep"
-              ? "3 agents \u00b7 Opus reasoning \u00b7 Medical research \u00b7 ~2 min"
-              : "Single analysis \u00b7 Sonnet 4.5 \u00b7 ~15 sec"}
+              ? "3 agents · Deep reasoning · Medical research · ~2 min"
+              : "Single analysis · Fast response · ~15 sec"}
           </p>
         </div>
 

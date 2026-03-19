@@ -8,14 +8,14 @@ export type LLMProvider = "anthropic" | "openrouter";
 export const provider: LLMProvider =
   (process.env.LLM_PROVIDER as LLMProvider) || "openrouter";
 
-const OPENROUTER_DEFAULT_MODEL = "minimax/minimax-text-01";
+const OPENROUTER_DEFAULT_MODEL = "minimax/minimax-m2.7";
 
 export const openRouterModel =
   process.env.OPENROUTER_MODEL || OPENROUTER_DEFAULT_MODEL;
 
 // Per-agent model overrides (all via OpenRouter)
 export const openRouterCausalModel =
-  process.env.OPENROUTER_CAUSAL_MODEL || "anthropic/claude-opus-4";
+  process.env.OPENROUTER_CAUSAL_MODEL || "xiaomi/mimo-v2-pro";
 
 // ── Clients ─────────────────────────────────────
 const anthropic = new Anthropic();
