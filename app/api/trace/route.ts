@@ -1,12 +1,26 @@
 import { runTrace } from "@/lib/agents/orchestrator";
 import { runQuickTrace } from "@/lib/agents/quick-trace";
+import { getSession } from "@/lib/auth";
+import { logAudit, getClientIp } from "@/lib/audit";
 
 export async function POST(req: Request) {
+  const user = await getSession();
+  if (!user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   const { inputText, mode } = await req.json();
 
   if (!inputText) {
     return new Response("Missing inputText", { status: 400 });
   }
+
+  await logAudit({
+    userId: user.id,
+    action: "create_trace",
+    metadata: { mode, inputTextLength: inputText.length },
+    ipAddress: getClientIp(req),
+  });
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({

@@ -3,14 +3,31 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuthContext } from "@/components/auth-provider";
+
+const patientNavItems = [
+  { href: "/trace/new", label: "New Trace", icon: "✨" },
+  { href: "/history", label: "History", icon: "📊" },
+  { href: "/insights", label: "Insights", icon: "💡" },
+  { href: "/analytics", label: "Analytics", icon: "📈" },
+  { href: "/settings/practice", label: "My Practice", icon: "🏥" },
+];
+
+const providerNavItems = [
+  { href: "/provider/dashboard", label: "Dashboard", icon: "🏥" },
+  { href: "/provider/patients", label: "Patients", icon: "👥" },
+  { href: "/provider/flagged", label: "Flagged Traces", icon: "🚩" },
+  { href: "/provider/team", label: "Team", icon: "⚙️" },
+];
 
 export function Sidebar() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuthContext();
 
   useEffect(() => {
-    // Load theme from localStorage
     const savedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
     if (savedTheme) {
       setTheme(savedTheme);
@@ -28,16 +45,8 @@ export function Sidebar() {
   // Hide sidebar on hero/login/docs pages
   if (pathname === "/" || pathname === "/login" || pathname.startsWith("/docs")) return null;
 
-  const navItems = [
-    { href: "/", label: "New Trace", icon: "✨" },
-    { href: "/history", label: "History", icon: "📊" },
-    { href: "/insights", label: "Insights", icon: "💡" },
-    { href: "/analytics", label: "Analytics", icon: "📈" },
-  ];
-
-  const visibleNavItems = navItems.filter(
-    (item) => !(item.href === "/" && pathname.startsWith("/trace"))
-  );
+  const isProvider = user?.role === "provider" || user?.role === "admin";
+  const navItems = isProvider ? providerNavItems : patientNavItems;
 
   return (
     <motion.aside
@@ -53,14 +62,14 @@ export function Sidebar() {
           T R A C E
         </h2>
         <p className="mt-1 text-xs text-text-tertiary">
-          Cross-system intelligence
+          {isProvider ? "Provider Dashboard" : "Cross-system intelligence"}
         </p>
       </Link>
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1" aria-label="Main menu">
-        {visibleNavItems.map((item) => {
-          const isActive = pathname === item.href;
+        {navItems.map((item) => {
+          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
               key={item.href}
@@ -102,11 +111,29 @@ export function Sidebar() {
           <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
         </button>
 
-        {/* User info placeholder */}
-        <div className="rounded-lg bg-bg-elevated p-3" role="region" aria-label="Patient profile">
-          <p className="text-xs font-medium text-text-primary">Patient Profile</p>
-          <p className="mt-1 text-xs text-text-tertiary">HbSS • High HbF</p>
-        </div>
+        {/* User info */}
+        {user && (
+          <div className="rounded-lg bg-bg-elevated p-3" role="region" aria-label="User profile">
+            <p className="text-xs font-medium text-text-primary">{user.name || user.email}</p>
+            <p className="mt-1 text-xs text-text-tertiary capitalize">{user.role}</p>
+            <button
+              onClick={async () => {
+                await logout();
+                router.push("/login");
+              }}
+              className="mt-2 text-xs text-text-tertiary hover:text-accent-warning transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
+        )}
+
+        {!user && (
+          <div className="rounded-lg bg-bg-elevated p-3" role="region" aria-label="Patient profile">
+            <p className="text-xs font-medium text-text-primary">Patient Profile</p>
+            <p className="mt-1 text-xs text-text-tertiary">HbSS • High HbF</p>
+          </div>
+        )}
       </div>
     </motion.aside>
   );

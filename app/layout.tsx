@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk } from "next/font/google";
 import { Sidebar } from "@/components/sidebar";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { LayoutShell } from "@/components/layout-shell";
+import { AuthProvider } from "@/components/auth-provider";
 import "./globals.css";
 
 const inter = Inter({
@@ -41,9 +42,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <body className="min-h-screen bg-bg-deep text-text-primary font-[family-name:var(--font-body)]">
-        <Sidebar />
-        <MobileBottomNav />
-        <LayoutShell>{children}</LayoutShell>
+        <AuthProvider>
+          <Sidebar />
+          <MobileBottomNav />
+          <LayoutShell>{children}</LayoutShell>
+        </AuthProvider>
       </body>
     </html>
   );

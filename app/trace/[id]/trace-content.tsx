@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Paperclip, X } from "@phosphor-icons/react";
 import { ReasoningDisplay } from "@/components/reasoning-display";
@@ -12,6 +12,7 @@ import { TimelineView } from "@/components/timeline-view";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { ShareTraceButton } from "@/components/share-trace-dialog";
 import type { CausalChain, Suggestion, InvestigationThread } from "@/lib/types";
 
 type Phase = "thinking" | "result" | "error";
@@ -158,6 +159,7 @@ const MOCK_CHAINS: CausalChain[] = [
 export function TraceContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const params = useParams<{ id: string }>();
   const inputText = searchParams.get("q") ?? "";
   const [localInput, setLocalInput] = useState("");
   const [analysisMode, setAnalysisMode] = useState<"deep" | "quick">("deep");
@@ -602,6 +604,13 @@ export function TraceContent() {
               </CardContent>
             </Card>
           ))}
+
+          {/* Share with Doctor */}
+          {params.id && params.id !== "new" && (
+            <div className="pt-2">
+              <ShareTraceButton traceId={params.id} />
+            </div>
+          )}
         </motion.div>
       )}
     </div>

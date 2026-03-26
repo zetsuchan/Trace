@@ -15,6 +15,36 @@ export const demoUser = {
   email: "marcus@demo.trace",
 };
 
+// ── Guest Accounts (for dev mode) ────────────
+
+export const guestPatient = {
+  name: "Marcus Johnson",
+  email: "guest-patient@dev.trace",
+  role: "patient" as const,
+  password: "guest", // only used in dev
+};
+
+export const guestProvider = {
+  name: "Dr. Abiola Okafor",
+  email: "guest-provider@dev.trace",
+  role: "provider" as const,
+  password: "guest", // only used in dev
+};
+
+// ── Demo Practice ────────────────────────────
+
+export const demoPractice = {
+  name: "Atlanta Sickle Cell Center",
+  slug: "atlanta-scc",
+  npi: "1234567890",
+  address: {
+    street: "1365 Clifton Rd NE",
+    city: "Atlanta",
+    state: "GA",
+    zip: "30322",
+  },
+};
+
 // ── Patient Profile ──────────────────────────
 
 export const demoPatientProfile = {

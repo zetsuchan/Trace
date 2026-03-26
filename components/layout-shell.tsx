@@ -13,6 +13,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   }
 
   const isFullWidth = FULL_WIDTH_ROUTES.includes(pathname);
+  const isProviderRoute = pathname.startsWith("/provider");
 
   if (isFullWidth) {
     return (
@@ -24,7 +25,9 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
   return (
     <main className="min-h-screen px-4 py-6 pb-24 sm:px-8 sm:py-8 md:ml-64 md:pb-8">
-      <div className="mx-auto max-w-[900px]">{children}</div>
+      <div className={`mx-auto ${isProviderRoute ? "max-w-[1100px]" : "max-w-[900px]"}`}>
+        {children}
+      </div>
     </main>
   );
 }

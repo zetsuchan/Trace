@@ -15,7 +15,9 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "npx tsx lib/seed.ts",
     "db:import-health": "npx tsx lib/import-health.ts",
-    "test:suite": "npx tsx lib/test-suite.ts"
+    "test:suite": "npx tsx lib/test-suite.ts",
+    "test:e2e": "bunx playwright test",
+    "test:e2e:ui": "bunx playwright test --ui"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
@@ -24,6 +26,7 @@
     "@types/dagre": "^0.7.53",
     "@types/mdx": "^2.0.13",
     "@types/sax": "^1.2.7",
+    "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dagre": "^0.8.5",
@@ -47,7 +50,9 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.1.0",
+    "@types/bcryptjs": "^3.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

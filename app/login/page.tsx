@@ -1,27 +1,63 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/hooks/use-auth";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/trace/new";
+  const { login, guestLogin } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleSignIn(e: React.FormEvent) {
+  const isDev = process.env.NODE_ENV === "development";
+
+  async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
-    // Demo-only: no real auth
-    localStorage.setItem("trace-auth", "signed-in");
-    router.push("/");
+    setError("");
+    setLoading(true);
+    try {
+      await login(email, password);
+      router.push(redirect);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function handleDemoMode() {
-    localStorage.setItem("trace-auth", "demo");
-    router.push("/");
+  async function handleGuestSignIn(role: "patient" | "provider") {
+    setError("");
+    setLoading(true);
+    try {
+      const user = await guestLogin(role);
+      if (user.role === "provider" || user.role === "admin") {
+        router.push("/provider/dashboard");
+      } else {
+        router.push(redirect);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Guest login failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -39,7 +75,6 @@ export default function LoginPage() {
       >
         <Card className="border-bg-elevated/60 bg-bg-surface/80 backdrop-blur-sm shadow-xl">
           <CardHeader className="items-center gap-4 pb-2">
-            {/* TRACE branding */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -91,31 +126,58 @@ export default function LoginPage() {
                 />
               </div>
 
-              <Button type="submit" variant="primary" className="mt-2 w-full">
-                Sign In
-              </Button>
+              {error && (
+                <p className="text-xs text-accent-warning">{error}</p>
+              )}
 
-              <div className="relative flex items-center gap-3 py-1">
-                <div className="h-px flex-1 bg-bg-elevated" />
-                <span className="text-[11px] text-text-tertiary uppercase tracking-wider">
-                  or
-                </span>
-                <div className="h-px flex-1 bg-bg-elevated" />
-              </div>
-
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full"
-                onClick={handleDemoMode}
-              >
-                Demo Mode
+              <Button type="submit" variant="primary" className="mt-2 w-full" disabled={loading}>
+                {loading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
 
-            <p className="mt-5 text-center text-[11px] text-text-tertiary">
-              Hackathon demo &mdash; no real credentials required
-            </p>
+            {/* Guest sign-in buttons — dev only */}
+            {isDev && (
+              <>
+                <div className="relative flex items-center gap-3 py-4">
+                  <div className="h-px flex-1 bg-bg-elevated" />
+                  <span className="text-[11px] text-text-tertiary uppercase tracking-wider">
+                    dev mode
+                  </span>
+                  <div className="h-px flex-1 bg-bg-elevated" />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    disabled={loading}
+                    onClick={() => handleGuestSignIn("patient")}
+                  >
+                    Guest Sign In — Patient
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    disabled={loading}
+                    onClick={() => handleGuestSignIn("provider")}
+                  >
+                    Guest Sign In — Provider
+                  </Button>
+                </div>
+
+                <p className="mt-4 text-center text-[11px] text-text-tertiary">
+                  Guest accounts require <code className="text-text-secondary">bun run db:seed</code>
+                </p>
+              </>
+            )}
+
+            {!isDev && (
+              <p className="mt-5 text-center text-[11px] text-text-tertiary">
+                Contact your practice administrator for access
+              </p>
+            )}
           </CardContent>
         </Card>
       </motion.div>
