@@ -8,7 +8,7 @@ const PUBLIC_ROUTES = ["/", "/login", "/api/auth"];
 const PUBLIC_PREFIXES = ["/docs", "/api/auth"];
 
 // Routes that require provider role (checked server-side in API handlers)
-// Middleware only checks for a session cookie — role enforcement is in the API/page layer
+// Proxy only checks for a session cookie — role enforcement is in the API/page layer
 const PROVIDER_PREFIXES = ["/provider"];
 
 function isPublicRoute(pathname: string): boolean {
@@ -16,7 +16,7 @@ function isPublicRoute(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession = request.cookies.has(SESSION_COOKIE);
 

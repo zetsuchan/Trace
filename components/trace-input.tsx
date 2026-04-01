@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { VoiceInputButton } from "@/components/voice-input-button";
 import { motion } from "motion/react";
 
 const PLACEHOLDERS = [
@@ -18,6 +19,10 @@ export function TraceInput() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const router = useRouter();
+
+  const handleVoiceTranscript = useCallback((text: string) => {
+    setInput((prev) => (prev ? `${prev} ${text}` : text));
+  }, []);
 
   async function handleSubmit() {
     if (!input.trim() || isSubmitting) return;
@@ -76,12 +81,18 @@ export function TraceInput() {
 
             {/* Bottom bar */}
             <div className="mt-4 flex items-end justify-between">
-              <motion.p
-                animate={{ opacity: isFocused ? 1 : 0.5 }}
-                className="text-xs text-text-tertiary"
-              >
-                {isFocused ? "Press Enter to trace" : "Describe what you're feeling"}
-              </motion.p>
+              <div className="flex items-center gap-2">
+                <VoiceInputButton
+                  onTranscript={handleVoiceTranscript}
+                  disabled={isSubmitting}
+                />
+                <motion.p
+                  animate={{ opacity: isFocused ? 1 : 0.5 }}
+                  className="text-xs text-text-tertiary"
+                >
+                  {isFocused ? "Press Enter to trace" : "Describe what you're feeling"}
+                </motion.p>
+              </div>
 
               <motion.div
                 whileHover={{ scale: 1.05, y: -2 }}

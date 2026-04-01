@@ -40,6 +40,7 @@ Same trace data, three ways to understand it:
 - **Health Data Integration** — 6 years of Apple Health data (2.5M records) as personal baseline
 - **Agent Activity Panel** — Real-time visualization of the AI pipeline working
 - **Obsidian Integration** — Trace results save as markdown notes in your vault
+- **Voice Input** — Speak your symptoms via Web Speech API (Chrome, Edge, Safari)
 - **Accessible** — WCAG 2.1 AA compliant (29 issues found and fixed via RAMS audit)
 - **Light/Dark Mode** — Custom warm palette for both themes
 
@@ -62,40 +63,37 @@ Same trace data, three ways to understand it:
 
 ### Prerequisites
 
-- **Node.js** 18+
-- **PostgreSQL** running locally (not Docker, not Vercel Postgres — a local Postgres instance)
-  - macOS: `brew install postgresql@17 && brew services start postgresql@17`
-  - Or use [Postgres.app](https://postgresapp.com)
+- **Node.js** 18+ and **Bun** (package manager)
+- **Docker** (for PostgreSQL)
 - API keys for: Anthropic, Exa, FireCrawl, Obsidian Local REST API (optional)
 
 ### Setup
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Set up environment
 cp .env.example .env.local
 # Fill in your keys:
 #   ANTHROPIC_API_KEY=sk-ant-...
-#   DATABASE_URL=postgresql://YOUR_USER@localhost:5432/trace
+#   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/trace
 #   EXA_API_KEY=...
 #   FIRECRAWL_API_KEY=...
 #   OBSIDIAN_API_KEY=... (optional)
 
-# Create the local database and push schema
-createdb trace
-npm run db:push
-npm run db:seed
+# Push schema and seed the database
+bun run db:push
+bun run db:seed
 
 # Import Apple Health data (optional — requires an Apple Health XML export)
-npm run db:import-health
+bun run db:import-health
 
-# Start dev server
-npm run dev
+# Start Postgres + dev server in one command
+bun run dev:full
 ```
 
-> **Note:** This project uses a local PostgreSQL database connected via `DATABASE_URL` in your `.env.local`. There is no Docker setup or cloud database — just Postgres running on your machine. Drizzle ORM handles the schema and migrations.
+> **Note:** `bun run dev:full` starts the PostgreSQL container via Docker Compose and launches the Next.js dev server. You can also run them separately with `docker compose up -d db` and `bun run dev`.
 
 ## Pages
 
@@ -103,7 +101,7 @@ npm run dev
 |-------|------------|
 | `/` | Hero page with SVG illustrations |
 | `/login` | Login with demo mode |
-| `/trace/new` | Symptom input with Deep/Quick analysis modes |
+| `/trace/new` | Symptom input (text + voice) with Deep/Quick analysis modes |
 | `/trace/[id]` | Three-view trace results |
 | `/history` | Past traces with urgency filtering |
 | `/insights` | Pattern recognition and recommendations |

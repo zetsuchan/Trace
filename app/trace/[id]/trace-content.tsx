@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Paperclip, X } from "@phosphor-icons/react";
+import { VoiceInputButton } from "@/components/voice-input-button";
 import { ReasoningDisplay } from "@/components/reasoning-display";
 import { AgentActivityPanel, type TraceStage } from "@/components/agent-activity-panel";
 import { ChainView } from "@/components/chain-view";
@@ -164,6 +165,10 @@ export function TraceContent() {
   const [localInput, setLocalInput] = useState("");
   const [analysisMode, setAnalysisMode] = useState<"deep" | "quick">("deep");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+  const handleVoiceTranscript = useCallback((text: string) => {
+    setLocalInput((prev) => (prev ? `${prev} ${text}` : text));
+  }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [phase, setPhase] = useState<Phase>("thinking");
@@ -384,6 +389,10 @@ export function TraceContent() {
               <Paperclip size={14} />
               Attach file
             </button>
+            <VoiceInputButton
+              onTranscript={handleVoiceTranscript}
+              size="sm"
+            />
             {uploadedFile && (
               <span className="inline-flex items-center gap-1 rounded-full bg-chain-active/10 px-2.5 py-0.5 text-xs text-chain-active">
                 {uploadedFile.name}

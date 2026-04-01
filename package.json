@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:full": "docker compose up -d db && next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "oxlint .",
